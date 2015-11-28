@@ -14,21 +14,18 @@ __author__ = "george@georgestarcher.com (George Starcher)"
 http_event_collector_debug = False 
 http_event_collector_SSL_verify = False
 
-# Default batch max size to match splunk's default limits for max byte or token count
-# See http_input stanza in limits.conf
-# Auto flush will occur if next payload will exceed limit
-_max_content_tokens = 10000
-_max_content_bytes = 1000000 
+# Default batch max size to match splunk's default limits for max byte 
+# See http_input stanza in limits.conf; note in testing I had to limit to 100,000 to avoid http event collector breaking connection
+# Auto flush will occur if next event payload will exceed limit
+_max_content_bytes = 100000 
 
 class http_event_collector:
 
-    def __init__(self,token,http_event_server,host="",http_event_port='8088',http_event_server_ssl=True,max_bytes=_max_content_bytes,max_tokens=_max_content_tokens):
+    def __init__(self,token,http_event_server,host="",http_event_port='8088',http_event_server_ssl=True,max_bytes=_max_content_bytes):
         self.token = token
         self.batchEvents = []
         self.maxByteLength = max_bytes
-        self.maxContentTokens = max_tokens
         self.currentByteLength = 0
-        self.currentTokenCount = 0
     
         # Set host to specified value or default to localhostname if no value provided
         if host:
@@ -77,16 +74,14 @@ class http_event_collector:
         # Method to store the event in a batch to flush later
 
         payloadLength = len(json.dumps(payload))
-        payloadTokenCount = len(payload)
 
-        if ((self.currentByteLength+payloadLength) > self.maxByteLength) or (self.currentTokenCount > self.maxContentTokens):
+        if (self.currentByteLength+payloadLength) > self.maxByteLength:
             self.flushBatch()
             # Print debug info if flag set
             if http_event_collector_debug:
                 print "auto flushing"
         else:
             self.currentByteLength=self.currentByteLength+payloadLength
-            self.currentTokenCount=self.currentTokenCount+payloadTokenCount
 
         # If eventtime in epoch not passed as optional argument use current system time in epoch
         if not eventtime:
@@ -106,7 +101,6 @@ class http_event_collector:
             r = requests.post(self.server_uri, data=" ".join(self.batchEvents), headers=headers, verify=http_event_collector_SSL_verify)
             self.batchEvents = []
             self.currentByteLength = 0
-            self.currentTokenCount = 0
 
 def main():
 
@@ -115,6 +109,7 @@ def main():
     # Create event collector object, default SSL and HTTP Event Collector Port
     http_event_collector_key = "PUTCOLLECTORKEYHERE"
     http_event_collector_host = "HOSTNAMEOFTHECOLLECTOR"
+ 
     testevent = http_event_collector(http_event_collector_key, http_event_collector_host)
 
     # Start event payload and add the metadata information
