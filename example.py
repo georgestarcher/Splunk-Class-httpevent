@@ -25,7 +25,7 @@ payload.update({"source":"witness"})
 payload.update({"host":"mansion"})
 
 # Report 5 Crimes
-for i in range(1,5):
+for i in range(1,6):
     event = commitCrime()
     event.update({"action":"success"})
     event.update({"crime_type":"single"})
@@ -33,7 +33,7 @@ for i in range(1,5):
     testevent.sendEvent(payload)
 
 # Report 50 Crimes
-for i in range(1,50):
+for i in range(1,51):
     event = commitCrime()
     event.update({"action":"success"})
     event.update({"crime_type":"batch"})
