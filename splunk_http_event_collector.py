@@ -58,6 +58,10 @@ class http_event_collector:
         if not eventtime:
             eventtime = str(int(time.time()))
 
+        # Fill in local hostname if not manually populated
+        if 'host' not in payload:
+            payload.update({"host":self.host})
+
         # Update time value on payload if need to use system time
         data = {"time":eventtime}
         data.update(payload)
@@ -72,6 +76,10 @@ class http_event_collector:
 
     def batchEvent(self,payload,eventtime=""):
         # Method to store the event in a batch to flush later
+
+        # Fill in local hostname if not manually populated
+        if 'host' not in payload:
+            payload.update({"host":self.host})
 
         payloadLength = len(json.dumps(payload))
 
