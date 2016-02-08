@@ -9,6 +9,8 @@ import requests
 import json
 import time
 import socket
+import threading
+import Queue
 
 __author__ = "george@georgestarcher.com (George Starcher)"
 http_event_collector_debug = False 
@@ -18,14 +20,22 @@ http_event_collector_SSL_verify = False
 # See http_input stanza in limits.conf; note in testing I had to limit to 100,000 to avoid http event collector breaking connection
 # Auto flush will occur if next event payload will exceed limit
 _max_content_bytes = 100000 
+_number_of_threads = 10
 
 class http_event_collector:
 
+            
     def __init__(self,token,http_event_server,host="",http_event_port='8088',http_event_server_ssl=True,max_bytes=_max_content_bytes):
         self.token = token
         self.batchEvents = []
         self.maxByteLength = max_bytes
         self.currentByteLength = 0
+        self.flushQueue = Queue.Queue(0)
+        for x in range(_number_of_threads):
+            t = threading.Thread(target=self.batchThread)
+            t.daemon = True
+            t.start()
+        
     
         # Set host to specified value or default to localhostname if no value provided
         if host:
@@ -38,12 +48,11 @@ class http_event_collector:
         # Defaults to port 8088 if port not passed
 
         if http_event_server_ssl:
-            buildURI = ['https://']
+            protocol = 'https'
         else:
-            buildURI = ['http://']
-        for i in [http_event_server,':',http_event_port,'/services/collector/event']:
-            buildURI.append(i)
-        self.server_uri = "".join(buildURI)
+            protocol = 'http'
+            
+        self.server_uri = '%s://%s:%s/services/collector/event' % (protocol, http_event_server, http_event_port)
 
         if http_event_collector_debug:
             print self.token
@@ -54,25 +63,22 @@ class http_event_collector:
 
         headers = {'Authorization':'Splunk '+self.token}
 
-        # If eventtime in epoch not passed as optional argument use current system time in epoch
-        if not eventtime:
+        # If eventtime in epoch not passed as optional argument and not in payload, use current system time in epoch
+        if not eventtime and 'time' not in payload:
             eventtime = str(int(time.time()))
+            payload.update({'time':eventtime})
 
         # Fill in local hostname if not manually populated
         if 'host' not in payload:
             payload.update({"host":self.host})
 
-        # Update time value on payload if need to use system time
-        data = {"time":eventtime}
-        data.update(payload)
-
         # send event to http event collector
-        r = requests.post(self.server_uri, data=json.dumps(data), headers=headers, verify=http_event_collector_SSL_verify)
+        r = requests.post(self.server_uri, data=json.dumps(payload), headers=headers, verify=http_event_collector_SSL_verify)
 
         # Print debug info if flag set
         if http_event_collector_debug:
             print (r.text)
-            print data
+            print payload
 
     def batchEvent(self,payload,eventtime=""):
         # Method to store the event in a batch to flush later
@@ -81,34 +87,44 @@ class http_event_collector:
         if 'host' not in payload:
             payload.update({"host":self.host})
 
-        payloadLength = len(json.dumps(payload))
+        # If eventtime in epoch not passed as optional argument and not in payload, use current system time in epoch
+        if not eventtime and 'time' not in payload:
+            eventtime = str(int(time.time()))
+            payload.update({"time":eventtime})
+            
+        payloadString = json.dumps(payload)
+        payloadLength = len(payloadString)
 
         if (self.currentByteLength+payloadLength) > self.maxByteLength:
-            self.flushBatch()
-            # Print debug info if flag set
             if http_event_collector_debug:
-                print "auto flushing"
-        else:
-            self.currentByteLength=self.currentByteLength+payloadLength
-
-        # If eventtime in epoch not passed as optional argument use current system time in epoch
-        if not eventtime:
-            eventtime = str(int(time.time()))
-
-        # Update time value on payload if need to use system time
-        data = {"time":eventtime}
-        data.update(payload)
-
-        self.batchEvents.append(json.dumps(data))
-
-    def flushBatch(self):
-        # Method to flush the batch list of events
-
-        if len(self.batchEvents) > 0:
-            headers = {'Authorization':'Splunk '+self.token}
-            r = requests.post(self.server_uri, data=" ".join(self.batchEvents), headers=headers, verify=http_event_collector_SSL_verify)
+                print "TOO BIG! Sticking the batch on the queue. Hopefulle the threads pick it up...."
+            self.flushQueue.put(self.batchEvents)
             self.batchEvents = []
             self.currentByteLength = 0
+            # Print debug info if flag set
+            if http_event_collector_debug:
+                print "adding batch to queue"
+        else:
+            self.currentByteLength += payloadLength
+
+        self.batchEvents.append(payloadString)
+        
+    def batchThread(self):
+        # Threads to send batches of events.
+        
+        while True:
+            batch = self.flushQueue.get()
+            if http_event_collector_debug:
+                print "Got us a batch. Let's send it on to Splunk."
+            headers = {'Authorization':'Splunk '+self.token}
+            requests.post(self.server_uri, data=" ".join(batch), headers=headers, verify=http_event_collector_SSL_verify)
+            self.flushQueue.task_done()
+            
+    def waitUntilDone(self):
+        # Block until all flushQueue is empty.
+        self.flushQueue.join()
+        return
+
 
 def main():
 
@@ -143,4 +159,3 @@ def main():
 if __name__ ==  "__main__":
 
     main()
-
