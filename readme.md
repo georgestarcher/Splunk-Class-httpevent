@@ -1,9 +1,11 @@
 #Python Class for Sending Events to Splunk HTTP Event Collector
 
-Version/Date: 1.0.0 2015-11-27
+Version/Date: 1.1.0 2016-02-14
 
 Author: George Starcher (starcher)
 Email: george@georgestarcher.com
+
+Thanks to Chandler Newby for getting this into the threaded design.
 
 This code is presented **AS IS** under MIT license.
 
@@ -27,5 +29,6 @@ Instantiate a copy of the http_event_collector object and use to generate and su
 #Notes:
 
 * You can use the sendEvent() method to send data immediately.
-* It is more efficient to use the batchEvent() and flushBatch() methods to submit multiple events at once.
+* It is more efficient to use the batchEvent() and flushBatch() methods to submit multiple events at once across multiple threads.
+* You must call flushBatch() if using batchEvent() or you risk exiting your code before all threads have flushed their data to Splunk.
 

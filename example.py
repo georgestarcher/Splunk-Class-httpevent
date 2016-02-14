@@ -25,19 +25,26 @@ payload.update({"source":"witness"})
 payload.update({"host":"mansion"})
 
 # Report 5 Crimes
-for i in range(1,6):
+for i in range(5):
     event = commitCrime()
     event.update({"action":"success"})
     event.update({"crime_type":"single"})
+    event.update({"crime_number":i})
     payload.update({"event":event})
     testevent.sendEvent(payload)
 
-# Report 50 Crimes
-for i in range(1,51):
+# Report 50,000 Crimes
+# Do NOT make more than 99,999 events in same timestamp. 
+# It will cause Splunk to error on any searches due to more 100K or more events in the index for the same timestamp.
+
+for i in range(50000):
     event = commitCrime()
     event.update({"action":"success"})
     event.update({"crime_type":"batch"})
+    event.update({"crime_number":i})
     payload.update({"event":event})
     testevent.batchEvent(payload)
 testevent.flushBatch()
+
+# be sure to call flushBatch() before ending your code. Otherwise you risk ending before all threads have flushed.
 
