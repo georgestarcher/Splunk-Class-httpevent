@@ -102,10 +102,9 @@ class http_event_collector:
             self.flushQueue.put(self.batchEvents)
             self.batchEvents = []
             self.currentByteLength = 0
-        else:
-            self.currentByteLength += payloadLength
 
         self.batchEvents.append(payloadString)
+        self.currentByteLength += payloadLength
         
     def batchThread(self):
         # Threads to send batches of events.
