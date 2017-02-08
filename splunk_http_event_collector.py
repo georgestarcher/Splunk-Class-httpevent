@@ -29,10 +29,12 @@ _number_of_threads = 10
 class http_event_collector:
 
             
-    def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True,max_bytes=_max_content_bytes):
+    def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True,max_bytes=_max_content_bytes,self.http_event_collector_SSL_verify,http_event_server_ssl_validation=True,debug=False):
         self.token = token
         self.batchEvents = []
         self.maxByteLength = max_bytes
+        self.http_event_collector_SSL_verify = http_event_server_ssl_validation
+        self.http_event_collector_debug = debug
         self.currentByteLength = 0
         self.input_type = input_type
         self.flushQueue = Queue.Queue(0)
