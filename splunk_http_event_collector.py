@@ -14,11 +14,6 @@ import Queue
 import uuid
 
 __author__ = "george@georgestarcher.com (George Starcher)"
-http_event_collector_debug = False 
-http_event_collector_SSL_verify = False
-
-if http_event_collector_SSL_verify == False:
-    requests.packages.urllib3.disable_warnings()
 
 # Default batch max size to match splunk's default limits for max byte 
 # See http_input stanza in limits.conf; note in testing I had to limit to 100,000 to avoid http event collector breaking connection
@@ -29,8 +24,10 @@ _number_of_threads = 10
 class http_event_collector:
 
             
-    def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True,max_bytes=_max_content_bytes):
+    def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True,max_bytes=_max_content_bytes,http_event_collector_debug=False,http_event_collector_SSL_verify = False):
         self.token = token
+        self.http_event_collector_debug = http_event_collector_debug 
+        self.http_event_collector_SSL_verify = http_event_collector_SSL_verify
         self.batchEvents = []
         self.maxByteLength = max_bytes
         self.currentByteLength = 0
@@ -41,6 +38,8 @@ class http_event_collector:
             t.daemon = True
             t.start()
         
+        if self.http_event_collector_SSL_verify == False:
+            requests.packages.urllib3.disable_warnings()
     
         # Set host to specified value or default to localhostname if no value provided
         if host:
@@ -64,7 +63,7 @@ class http_event_collector:
             
         self.server_uri = '%s://%s:%s/services/collector%s' % (protocol, http_event_server, http_event_port, input_url)
 
-        if http_event_collector_debug:
+        if self.http_event_collector_debug:
             print self.token
             print self.server_uri 
             print self.input_type               
@@ -92,7 +91,7 @@ class http_event_collector:
             event.append(str(payload))
 
         self.flushQueue.put(event)
-        if http_event_collector_debug:
+        if self.http_event_collector_debug:
             print "Single Submit: Sticking the event on the queue."
             print event
         self.waitUntilDone()
@@ -120,7 +119,7 @@ class http_event_collector:
         payloadLength = len(payloadString)
 
         if ((self.currentByteLength+payloadLength) > self.maxByteLength or (self.maxByteLength - self.currentByteLength) < payloadLength):
-            if http_event_collector_debug:
+            if self.http_event_collector_debug:
                 print "Auto Flush: Sticking the batch on the queue."
             self.flushQueue.put(self.batchEvents)
             self.batchEvents = []
@@ -133,12 +132,12 @@ class http_event_collector:
         # Threads to send batches of events.
         
         while True:
-            if http_event_collector_debug:
+            if self.http_event_collector_debug:
                 print "Events received on thread. Sending to Splunk."
             payload = " ".join(self.flushQueue.get())
             headers = {'Authorization':'Splunk '+self.token}
-            r = requests.post(self.server_uri, data=payload, headers=headers, verify=http_event_collector_SSL_verify)
-            if http_event_collector_debug:
+            r = requests.post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
+            if self.http_event_collector_debug:
                 print r.text
             self.flushQueue.task_done()
             
@@ -149,7 +148,7 @@ class http_event_collector:
 
 
     def flushBatch(self):
-        if http_event_collector_debug:
+        if self.http_event_collector_debug:
             print "Manual Flush: Sticking the batch on the queue."
         self.flushQueue.put(self.batchEvents)
         self.batchEvents = []
@@ -165,12 +164,12 @@ def main():
     http_event_collector_key_raw = "PUTCOLLECTORKEYHERE"
     http_event_collector_host = "HOSTNAMEOFTHECOLLECTOR"
 
-    testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host)
+    # Example with the JSON connection set to debug
+    testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host,'json','','8088',True,10000,True)
     testeventRAW = http_event_collector(http_event_collector_key_raw, http_event_collector_host,'raw')
 
     # Start event payload and add the metadata information
     payload = {}
-    # payload.update({"index":"temp"})
     payload.update({"index":"main"})
     payload.update({"sourcetype":"txt"})
     payload.update({"source":"test"})
@@ -184,7 +183,7 @@ def main():
 
     # Batch add 50000 test events
     for i in range(50000):
-        payload.update({"event":{"action":"success","message":"batch hello world","event_id":i}})
+        payload.update({"event":{"action":"success","type":"json","message":"batch hello world","event_id":i}})
         testeventJSON.batchEvent(payload)
         testeventRAW.batchEvent("%s type=raw message=batch event_id=%s" % (time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()), str(i)))
     testeventJSON.flushBatch()
