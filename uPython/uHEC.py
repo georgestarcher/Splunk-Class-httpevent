@@ -36,32 +36,6 @@ http_event_collector_debug = True
 
 class http_event_collector:
 
-    import sys
-
-    try:
-        import json
-        import time
-        import socket
-    except ImportError as err_msg:
-        print(err_msg)
-        sys.exit(1)
-
-    # requests library is required for this class
-    try:
-        import requests
-    except ImportError:
-        try:
-            import urequests as requests
-        except ImportError as err_msg:
-            print(err_msg)
-            sys.exit(1)
-
-     # setting ntptime is optional for this class
-    try:
-        import ntptime
-    except ImportError as err_msg:
-        print(err_msg)
-            
     def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True):
         self.token = token
         self.currentByteLength = 0

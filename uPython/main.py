@@ -2,8 +2,8 @@ import sys
 from uHEC import http_event_collector
 
 # Create event collector object, default SSL and HTTP Event Collector Port
-http_event_collector_key_json = "4D14F8D9-D788-4E6E-BF2D-D1A46441242E"
-http_event_collector_host = "10.0.1.61"
+http_event_collector_key_json = "PUTCOLLECTORKEYHERE"
+http_event_collector_host = "HOSTNAMEOFTHECOLLECTOR"
 
 testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host)
 
