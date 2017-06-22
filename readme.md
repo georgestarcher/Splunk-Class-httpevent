@@ -26,6 +26,10 @@ This is a python class file for use with other python scripts to send events to 
 
 You will need to put this with any other code and import the class as needed.
 Instantiate a copy of the http_event_collector object and use to generate and submit payloads as you see in the example main() method.
+
+###Configuration with pip
+
+    pip install git+git://github.com/georgestarcher/Splunk-Class-httpevent.git
     
 #Notes:
 
