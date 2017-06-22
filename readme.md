@@ -1,4 +1,4 @@
-#Python Class for Sending Events to Splunk HTTP Event Collector
+# Python Class for Sending Events to Splunk HTTP Event Collector
 
 Version/Date: 1.2 2016-10-16
 
@@ -10,28 +10,28 @@ Thanks to Chandler Newby for getting this into the threaded design.
 This code is presented **AS IS** under MIT license.
 
 
-##Description:
+## Description:
 
 This is a python class file for use with other python scripts to send events to a Splunk http event collector.
 
-##Supported product(s): 
+## Supported product(s): 
 
 * Splunk v6.3.X+
 * Splunk v6.4.X+ for the raw input option
 
  
-##Using this Python Class
+## Using this Python Class
 
-###Configuration: Manual
+### Configuration: Manual
 
 You will need to put this with any other code and import the class as needed.
 Instantiate a copy of the http_event_collector object and use to generate and submit payloads as you see in the example main() method.
 
-###Configuration with pip
+### Configuration with pip
 
     pip install git+git://github.com/georgestarcher/Splunk-Class-httpevent.git
     
-#Notes:
+# Notes:
 
 * You can use the sendEvent() method to send data immediately.
 * It is more efficient to use the batchEvent() and flushBatch() methods to submit multiple events at once across multiple threads.
