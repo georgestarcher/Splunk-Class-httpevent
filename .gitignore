@@ -1,0 +1,3 @@
+build
+splunk_http_event_collector
+*.pyc
