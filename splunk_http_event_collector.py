@@ -136,7 +136,16 @@ class http_event_collector:
                 print "Events received on thread. Sending to Splunk."
             payload = " ".join(self.flushQueue.get())
             headers = {'Authorization':'Splunk '+self.token}
-            r = requests.post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
+            # try to post payload twice then give up and move on
+            try:
+                r = requests.post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
+            except Exception as e:
+                pass
+            try:
+                r = requests.post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
+            except Exception as e:
+                pass
+
             if self.http_event_collector_debug:
                 print r.text
             self.flushQueue.task_done()
