@@ -140,11 +140,10 @@ class http_event_collector:
             try:
                 r = requests.post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
             except Exception as e:
-                pass
-            try:
-                r = requests.post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
-            except Exception as e:
-                pass
+                try:
+                    r = requests.post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
+                except Exception as e:
+                    pass
 
             if self.http_event_collector_debug:
                 print r.text
