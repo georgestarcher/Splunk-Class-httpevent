@@ -6,6 +6,9 @@
 """
 
 import requests
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
 import json
 import time
 import socket
@@ -20,6 +23,17 @@ __author__ = "george@georgestarcher.com (George Starcher)"
 # Auto flush will occur if next event payload will exceed limit
 _max_content_bytes = 100000 
 _number_of_threads = 10
+
+# An improved requests retry method from
+# https://www.peterbe.com/plog/best-practice-with-retries-with-requests
+
+def requests_retry_session(retries=3,backoff_factor=0.3,status_forcelist=(500,502,504),session=None):
+    session = session or requests.Session()
+    retry = Retry(total=retries, read=retries, connect=retries, backoff_factor=backoff_factor, status_forcelist=status_forcelist)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
 
 class http_event_collector:
 
@@ -127,7 +141,7 @@ class http_event_collector:
 
         self.batchEvents.append(payloadString)
         self.currentByteLength += payloadLength
-        
+
     def batchThread(self):
         # Threads to send batches of events.
         
@@ -138,12 +152,9 @@ class http_event_collector:
             headers = {'Authorization':'Splunk '+self.token}
             # try to post payload twice then give up and move on
             try:
-                r = requests.post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
+                r = requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
             except Exception as e:
-                try:
-                    r = requests.post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
-                except Exception as e:
-                    pass
+                pass
 
             if self.http_event_collector_debug:
                 print r.text
