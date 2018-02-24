@@ -33,4 +33,4 @@ Instantiate a copy of the http_event_collector object and use to generate and su
 * It is more efficient to use the batchEvent() and flushBatch() methods to submit multiple events at once across multiple threads.
 * You must call flushBatch() if using batchEvent() or you risk exiting your code before all threads have flushed their data to Splunk.
 * There is now an optional input_type when declaring your HEC server. It defaults to the normal JSON event format but adds raw support.
-
+* Added a pop null fields option. Defaults to False to preserve existing class behavior. 
