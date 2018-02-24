@@ -194,9 +194,6 @@ def main():
     http_event_collector_key_raw = "PUTCOLLECTORKEYHERE"
     http_event_collector_host = "HOSTNAMEOFTHECOLLECTOR"
 
-    http_event_collector_key_json = "4D14F8D9-D788-4E6E-BF2D-D1A46441242E"
-    http_event_collector_host = "localhost"
-
     # Example with the JSON connection set to debug
     testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host,'json','','8088',True,10000,True)
     testeventRAW = http_event_collector(http_event_collector_key_raw, http_event_collector_host,'raw')
