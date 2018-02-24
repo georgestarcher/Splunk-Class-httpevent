@@ -46,6 +46,7 @@ class http_event_collector:
         self.maxByteLength = max_bytes
         self.currentByteLength = 0
         self.input_type = input_type
+        self.popNullFields = False 
         self.flushQueue = Queue.Queue(0)
         for x in range(_number_of_threads):
             t = threading.Thread(target=self.batchThread)
@@ -100,6 +101,10 @@ class http_event_collector:
         # send event to http event collector
         event = []
         if self.input_type == 'json':
+            if self.popNullFields:
+                payloadEvent = payload.get('event')
+                payloadEvent = {k:payloadEvent.get(k) for k,v in payloadEvent.items() if v}
+                payload.update({"event":payloadEvent})
             event.append(json.dumps(payload))
         else:
             event.append(str(payload))
@@ -122,7 +127,10 @@ class http_event_collector:
             if not eventtime and 'time' not in payload:
                 eventtime = str(int(time.time()))
                 payload.update({"time":eventtime})
-            
+            if self.popNullFields:
+                payloadEvent = payload.get('event')
+                payloadEvent = {k:payloadEvent.get(k) for k,v in payloadEvent.items() if v}
+                payload.update({"event":payloadEvent})
             payloadString = json.dumps(payload)
 
         else:
@@ -157,7 +165,10 @@ class http_event_collector:
                 pass
 
             if self.http_event_collector_debug:
-                print r.text
+                try:
+                    print r.text
+                except:
+                    pass
             self.flushQueue.task_done()
             
     def waitUntilDone(self):
@@ -183,9 +194,15 @@ def main():
     http_event_collector_key_raw = "PUTCOLLECTORKEYHERE"
     http_event_collector_host = "HOSTNAMEOFTHECOLLECTOR"
 
+    http_event_collector_key_json = "4D14F8D9-D788-4E6E-BF2D-D1A46441242E"
+    http_event_collector_host = "localhost"
+
     # Example with the JSON connection set to debug
     testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host,'json','','8088',True,10000,True)
     testeventRAW = http_event_collector(http_event_collector_key_raw, http_event_collector_host,'raw')
+
+    # Set option to pop empty fields to True, default is False to preserve previous class behavior. Only applies to JSON method
+    testeventJSON.popNullFields = True 
 
     # Start event payload and add the metadata information
     payload = {}
@@ -196,13 +213,13 @@ def main():
 
     # Add 5 test events
     for i in range(5):
-        payload.update({"event":{"action":"success","type":"json","message":"individual hello world","event_id":i}})
+        payload.update({"event":{"action":"success","type":"json","message":"individual hello world","testBool":False,"event_id":i}})
         testeventJSON.sendEvent(payload)
         testeventRAW.sendEvent("%s type=raw message=individual" % time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()))
 
     # Batch add 50000 test events
     for i in range(50000):
-        payload.update({"event":{"action":"success","type":"json","message":"batch hello world","event_id":i}})
+        payload.update({"event":{"action":"success","type":"json","message":"batch hello world","testBool":"","event_id":i}})
         testeventJSON.batchEvent(payload)
         testeventRAW.batchEvent("%s type=raw message=batch event_id=%s" % (time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()), str(i)))
     testeventJSON.flushBatch()
