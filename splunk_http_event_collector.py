@@ -13,8 +13,14 @@ import json
 import time
 import socket
 import threading
-import Queue
 import uuid
+import sys
+
+is_py2 = sys.version[0] == '2'
+if is_py2:
+    import Queue as Queue
+else:
+    import queue as Queue
 
 __author__ = "george@georgestarcher.com (George Starcher)"
 
@@ -79,9 +85,9 @@ class http_event_collector:
         self.server_uri = '%s://%s:%s/services/collector%s' % (protocol, http_event_server, http_event_port, input_url)
 
         if self.http_event_collector_debug:
-            print self.token
-            print self.server_uri 
-            print self.input_type               
+            print (self.token)
+            print (self.server_uri)
+            print (self.input_type)               
 
     def sendEvent(self,payload,eventtime=""):
         # Method to immediately send an event to the http event collector
@@ -111,8 +117,8 @@ class http_event_collector:
 
         self.flushQueue.put(event)
         if self.http_event_collector_debug:
-            print "Single Submit: Sticking the event on the queue."
-            print event
+            print ("Single Submit: Sticking the event on the queue.")
+            print (event)
         self.waitUntilDone()
 
     def batchEvent(self,payload,eventtime=""):
@@ -142,7 +148,7 @@ class http_event_collector:
 
         if ((self.currentByteLength+payloadLength) > self.maxByteLength or (self.maxByteLength - self.currentByteLength) < payloadLength):
             if self.http_event_collector_debug:
-                print "Auto Flush: Sticking the batch on the queue."
+                print ("Auto Flush: Sticking the batch on the queue.")
             self.flushQueue.put(self.batchEvents)
             self.batchEvents = []
             self.currentByteLength = 0
@@ -155,7 +161,7 @@ class http_event_collector:
         
         while True:
             if self.http_event_collector_debug:
-                print "Events received on thread. Sending to Splunk."
+                print ("Events received on thread. Sending to Splunk.")
             payload = " ".join(self.flushQueue.get())
             headers = {'Authorization':'Splunk '+self.token}
             # try to post payload twice then give up and move on
@@ -166,7 +172,7 @@ class http_event_collector:
 
             if self.http_event_collector_debug:
                 try:
-                    print r.text
+                    print (r.text)
                 except:
                     pass
             self.flushQueue.task_done()
@@ -179,7 +185,7 @@ class http_event_collector:
 
     def flushBatch(self):
         if self.http_event_collector_debug:
-            print "Manual Flush: Sticking the batch on the queue."
+            print ("Manual Flush: Sticking the batch on the queue.")
         self.flushQueue.put(self.batchEvents)
         self.batchEvents = []
         self.currentByteLength = 0
