@@ -24,12 +24,6 @@ else:
 
 __author__ = "george@georgestarcher.com (George Starcher)"
 
-# Default batch max size to match splunk's default limits for max byte 
-# See http_input stanza in limits.conf; note in testing I had to limit to 100,000 to avoid http event collector breaking connection
-# Auto flush will occur if next event payload will exceed limit
-_max_content_bytes = 100000 
-_number_of_threads = 10
-
 # An improved requests retry method from
 # https://www.peterbe.com/plog/best-practice-with-retries-with-requests
 
@@ -43,23 +37,27 @@ def requests_retry_session(retries=3,backoff_factor=0.3,status_forcelist=(500,50
 
 class http_event_collector:
 
-            
-    def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True,max_bytes=_max_content_bytes,http_event_collector_debug=False,http_event_collector_SSL_verify = False):
+    # Default batch max size to match splunk's default limits for max byte
+    # See http_input stanza in limits.conf; note in testing I had to limit to 100,000 to avoid http event collector breaking connection
+    # Auto flush will occur if next event payload will exceed limit
+    maxByteLength = 100000
+    threadCount = 10
+
+    def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True):
         self.token = token
-        self.http_event_collector_debug = http_event_collector_debug 
-        self.http_event_collector_SSL_verify = http_event_collector_SSL_verify
+        self.debug = False
+        self.SSL_verify = False
         self.batchEvents = []
-        self.maxByteLength = max_bytes
         self.currentByteLength = 0
         self.input_type = input_type
         self.popNullFields = False 
         self.flushQueue = Queue.Queue(0)
-        for x in range(_number_of_threads):
+        for x in range(self.threadCount):
             t = threading.Thread(target=self.batchThread)
             t.daemon = True
             t.start()
         
-        if self.http_event_collector_SSL_verify == False:
+        if self.SSL_verify == False:
             requests.packages.urllib3.disable_warnings()
     
         # Set host to specified value or default to localhostname if no value provided
@@ -84,7 +82,7 @@ class http_event_collector:
             
         self.server_uri = '%s://%s:%s/services/collector%s' % (protocol, http_event_server, http_event_port, input_url)
 
-        if self.http_event_collector_debug:
+        if self.debug:
             print (self.token)
             print (self.server_uri)
             print (self.input_type)               
@@ -116,7 +114,7 @@ class http_event_collector:
             event.append(str(payload))
 
         self.flushQueue.put(event)
-        if self.http_event_collector_debug:
+        if self.debug:
             print ("Single Submit: Sticking the event on the queue.")
             print (event)
         self.waitUntilDone()
@@ -147,7 +145,7 @@ class http_event_collector:
         payloadLength = len(payloadString)
 
         if ((self.currentByteLength+payloadLength) > self.maxByteLength or (self.maxByteLength - self.currentByteLength) < payloadLength):
-            if self.http_event_collector_debug:
+            if self.debug:
                 print ("Auto Flush: Sticking the batch on the queue.")
             self.flushQueue.put(self.batchEvents)
             self.batchEvents = []
@@ -160,17 +158,17 @@ class http_event_collector:
         # Threads to send batches of events.
         
         while True:
-            if self.http_event_collector_debug:
+            if self.debug:
                 print ("Events received on thread. Sending to Splunk.")
             payload = " ".join(self.flushQueue.get())
             headers = {'Authorization':'Splunk '+self.token}
             # try to post payload twice then give up and move on
             try:
-                r = requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.http_event_collector_SSL_verify)
+                r = requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
             except Exception as e:
                 pass
 
-            if self.http_event_collector_debug:
+            if self.debug:
                 try:
                     print (r.text)
                 except:
@@ -184,7 +182,7 @@ class http_event_collector:
 
 
     def flushBatch(self):
-        if self.http_event_collector_debug:
+        if self.debug:
             print ("Manual Flush: Sticking the batch on the queue.")
         self.flushQueue.put(self.batchEvents)
         self.batchEvents = []
@@ -201,7 +199,9 @@ def main():
     http_event_collector_host = "HOSTNAMEOFTHECOLLECTOR"
 
     # Example with the JSON connection set to debug
-    testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host,'json','','8088',True,10000,True)
+    testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host,'json')
+    testeventJSON.debug = True
+
     testeventRAW = http_event_collector(http_event_collector_key_raw, http_event_collector_host,'raw')
 
     # Set option to pop empty fields to True, default is False to preserve previous class behavior. Only applies to JSON method
