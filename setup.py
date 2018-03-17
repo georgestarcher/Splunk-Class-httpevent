@@ -13,11 +13,11 @@ setup(name='Splunk-HEC',
       author='George (starcher) Starcher',
       author_email='george@georgestarcher.com',
       url='https://github.com/georgestarcher/Splunk-Class-httpevent',
-      project_urls={
-          'Source': 'https://github.com/georgestarcher/Splunk-Class-httpevent/blob/master/splunk_http_event_collector.py',
-          'Example': 'https://github.com/georgestarcher/Splunk-Class-httpevent/blob/master/example.py',},
       py_modules=['splunk_http_event_collector'],
-      keywords="Splunk HEC",
-      license="MIT"
+      keywords="splunk hec",
+      license="MIT",
+      install_requires=[
+          'requests'
+      ],
      )
 
