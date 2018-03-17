@@ -16,6 +16,7 @@ http_event_collector_key = "4D14F8D9-D788-4E6E-BF2D-D1A46441242E"
 http_event_collector_host = "localhost"
 
 testevent = http_event_collector(http_event_collector_key, http_event_collector_host)
+testevent.popNullFields = True
 
 # Start event payload and add the metadata information
 payload = {}
