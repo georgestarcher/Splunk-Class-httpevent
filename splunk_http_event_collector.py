@@ -43,7 +43,10 @@ class http_event_collector:
             popNullFields -- boolean flag to pop null fields off payload prior to sending to Splunk (default false)
 
         Example Init:
+            from splunk_http_event_collector import http_event_collector
             testeventJSON = http_event_collector("4D14F8D9-D788-4E6E-BF2D-D1A46441242E","localhost")
+
+            For full usage example: https://github.com/georgestarcher/Splunk-Class-httpevent/blob/master/example.py
      """
 
     # Default batch max size to match splunk's default limits for max byte
