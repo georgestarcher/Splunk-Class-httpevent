@@ -41,8 +41,8 @@ class http_event_collector:
             debug -- debug boolean flag (default false) 
             SSL_verify -- boolean flag to force SSL certificate verification (default false)
             popNullFields -- boolean flag to pop null fields off payload prior to sending to Splunk (default false)
-            raw_index -- optional index name for raw HEC events (default None)
-            raw_sourcetype -- optional sourcetype name for raw HEC events (default None)
+            index -- optional index name for HEC events (default None)
+            sourcetype -- optional sourcetype name for HEC events (default None)
             server_uri -- computed property for HEC uri based on HEC type, raw metadata etc.
 
         Example Init:
@@ -76,8 +76,8 @@ class http_event_collector:
         self.http_event_server = http_event_server
         self.http_event_server_ssl = http_event_server_ssl
         self.http_event_port = http_event_port
-        self.raw_index = ""
-        self.raw_sourcetype = ""
+        self.index = ""
+        self.sourcetype = ""
         self.batchEvents = []
         self.currentByteLength = 0
         self.input_type = input_type
@@ -116,10 +116,13 @@ class http_event_collector:
 
         if self.input_type == 'raw':
             input_url = '/raw?channel='+str(uuid.uuid1())
-            if self.raw_sourcetype: input_url = input_url+'&sourcetype='+self.raw_sourcetype
-            if self.raw_index: input_url = input_url+'&index='+self.raw_index
+            if self.sourcetype: input_url = input_url+'&sourcetype='+self.sourcetype
+            if self.index: input_url = input_url+'&index='+self.index
         else:
             input_url = '/event'
+            if self.sourcetype or self.index: input_url = input_url+'?'
+            if self.sourcetype: input_url = input_url+'sourcetype='+self.sourcetype+"&"
+            if self.index: input_url = input_url+'index='+self.index+"&"
 
         server_uri = '%s://%s:%s/services/collector%s' % (protocol, self.http_event_server, self.http_event_port, input_url)
         return (server_uri)

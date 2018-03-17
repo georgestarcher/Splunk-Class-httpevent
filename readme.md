@@ -37,16 +37,12 @@ Once installed you can start python then
     from splunk_http_event_collector import http_event_collector
     help(http_event_collector)
 
-### RAW HEC Mode:
+### HEC Collector level index and sourcetype
 
-If you use raw HEC mode and want to force the index/sourcetype set the attributes on the HEC object like this. You can set one or either. This had to be done as setable attributes since for HEC raw the values are put into the URL the data is posted to.
+    hec_server.index = "test"
+    hec_server.sourcetype = "syslog"
 
-    hec_server.raw_index = "test"
-    hec_server.raw_sourcetype = "syslog"
-
-### JSON HEC Mode:
-
-Behavior of this mode is unchanged in the class. You still set all HEC metadata in the payload as you see in example.py.
+This works for either RAW or JSON. JSON has the option of the normal existing behavior to override per event by placing in the payload as shown in example.py
 
     
 # Notes:
