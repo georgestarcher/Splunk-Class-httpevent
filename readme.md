@@ -46,7 +46,7 @@ If you use raw HEC mode and want to force the index/sourcetype set the attribute
 
 ### JSON HEC Mode:
 
-Behavior of this mode isunchanged in the class. You still set all HEC metadata in the payload as you see in example.py.
+Behavior of this mode is unchanged in the class. You still set all HEC metadata in the payload as you see in example.py.
 
     
 # Notes:
