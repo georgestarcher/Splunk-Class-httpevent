@@ -34,8 +34,8 @@ Instantiate a copy of the http_event_collector object and use to generate and su
 
 Once installed you can start python then
 
-    import splunk_http_event_collector
-    help(splunk_http_event_collector)
+    from splunk_http_event_collector import http_event_collector
+    help(http_event_collector)
     
 # Notes:
 
