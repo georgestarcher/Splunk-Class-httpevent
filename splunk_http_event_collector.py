@@ -41,6 +41,9 @@ class http_event_collector:
             debug -- debug boolean flag (default false) 
             SSL_verify -- boolean flag to force SSL certificate verification (default false)
             popNullFields -- boolean flag to pop null fields off payload prior to sending to Splunk (default false)
+            raw_index -- optional index name for raw HEC events (default None)
+            raw_sourcetype -- optional sourcetype name for raw HEC events (default None)
+            server_uri -- computed property for HEC uri based on HEC type, raw metadata etc.
 
         Example Init:
             from splunk_http_event_collector import http_event_collector
@@ -70,6 +73,11 @@ class http_event_collector:
         self.token = token
         self.debug = False
         self.SSL_verify = False
+        self.http_event_server = http_event_server
+        self.http_event_server_ssl = http_event_server_ssl
+        self.http_event_port = http_event_port
+        self.raw_index = ""
+        self.raw_sourcetype = ""
         self.batchEvents = []
         self.currentByteLength = 0
         self.input_type = input_type
@@ -89,26 +97,33 @@ class http_event_collector:
         else:
             self.host = socket.gethostname()
 
-        # Build and set server_uri for http event collector
-        # Defaults to SSL if flag not passed
-        # Defaults to port 8088 if port not passed
-
-        if http_event_server_ssl:
-            protocol = 'https'
-        else:
-            protocol = 'http'
-
-        if input_type == 'raw':
-            input_url = '/raw?channel='+str(uuid.uuid1())
-        else:
-            input_url = '/event'
-            
-        self.server_uri = '%s://%s:%s/services/collector%s' % (protocol, http_event_server, http_event_port, input_url)
-
         if self.debug:
             print (self.token)
             print (self.server_uri)
             print (self.input_type)               
+
+    @property
+    def server_uri(self):
+
+       # Build and set server_uri for http event collector
+        # Defaults to SSL if flag not passed
+        # Defaults to port 8088 if port not passed
+
+        if self.http_event_server_ssl:
+            protocol = 'https'
+        else:
+            protocol = 'http'
+
+        if self.input_type == 'raw':
+            input_url = '/raw?channel='+str(uuid.uuid1())
+            if self.raw_sourcetype: input_url = input_url+'&sourcetype='+self.raw_sourcetype
+            if self.raw_index: input_url = input_url+'&index='+self.raw_index
+        else:
+            input_url = '/event'
+
+        server_uri = '%s://%s:%s/services/collector%s' % (protocol, self.http_event_server, self.http_event_port, input_url)
+        return (server_uri)
+
 
     def sendEvent(self,payload,eventtime=""):
         """Method to immediately send an event to the http event collector"""
@@ -229,7 +244,7 @@ def main():
 
     # Example with the JSON connection set to debug
     testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host,'json')
-    testeventJSON.debug = True
+    testeventJSON.debug = True 
 
     testeventRAW = http_event_collector(http_event_collector_key_raw, http_event_collector_host,'raw')
 
