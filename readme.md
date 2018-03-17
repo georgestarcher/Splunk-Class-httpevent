@@ -6,6 +6,7 @@ Author: George Starcher (starcher)
 Email: george@georgestarcher.com
 
 Thanks to Chandler Newby for getting this into the threaded design.
+Thanks to Paul Miller for the pip support.
 
 This code is presented **AS IS** under MIT license.
 
@@ -26,6 +27,10 @@ This is a python class file for use with other python scripts to send events to 
 
 You will need to put this with any other code and import the class as needed.
 Instantiate a copy of the http_event_collector object and use to generate and submit payloads as you see in the example main() method.
+
+### Configuration with pip
+
+    pip install git+git://github.com/georgestarcher/Splunk-Class-httpevent.git
     
 # Notes:
 
