@@ -41,8 +41,8 @@ Once installed you can start python then
 
 If you use raw HEC mode and want to force the index/sourcetype set the attributes on the HEC object like this. You can set one or either. This had to be done as setable attributes since for HEC raw the values are put into the URL the data is posted to.
 
-hec_server.raw_index = "test"
-hec_server.raw_sourcetype = "syslog"
+    hec_server.raw_index = "test"
+    hec_server.raw_sourcetype = "syslog"
 
 ### JSON HEC Mode:
 
