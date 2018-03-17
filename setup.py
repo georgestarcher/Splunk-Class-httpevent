@@ -9,5 +9,7 @@ setup(name='Splunk-HEC',
       author_email='george@georgestarcher.com',
       url='https://www.splunk.com/blog/2015/12/11/http-event-collect-a-python-class/',
       py_modules=['splunk_http_event_collector'],
+      keywords="Splunk HEC",
+      license="MIT"
      )
 
