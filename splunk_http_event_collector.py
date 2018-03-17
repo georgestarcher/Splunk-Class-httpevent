@@ -5,6 +5,8 @@
         Please use CIM friendly field names when sending in data.
 """
 
+__author__ = "george@georgestarcher.com (George Starcher)"
+
 import requests
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
@@ -22,26 +24,44 @@ if is_py2:
 else:
     import queue as Queue
 
-__author__ = "george@georgestarcher.com (George Starcher)"
-
-# An improved requests retry method from
-# https://www.peterbe.com/plog/best-practice-with-retries-with-requests
-
-def requests_retry_session(retries=3,backoff_factor=0.3,status_forcelist=(500,502,504),session=None):
-    session = session or requests.Session()
-    retry = Retry(total=retries, read=retries, connect=retries, backoff_factor=backoff_factor, status_forcelist=status_forcelist)
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
-    return session
-
 class http_event_collector:
+
+    """
+        Splunk HTTP Event Collector Class
+
+        Keyword Arguments:
+            token -- the Splunk HEC token value - required
+            http_event_server -- the Splunk Server name or ip. Name must be network resolvable. - required
+            input_type -- json or raw HEC type - provided at init (default json)
+            host -- value to use as host field for events sent to Splunk (default the local system's hostname) 
+            http_event_port -- Splunk HEC network port (default 8080)
+            http_event_server_ssl -- boolean to set if Splunk HEC is using SSL (default True) 
+
+        Attributes:
+            debug -- debug boolean flag (default false) 
+            SSL_verify -- boolean flag to force SSL certificate verification (default false)
+            popNullFields -- boolean flag to pop null fields off payload prior to sending to Splunk (default false)
+
+        Example Init:
+            testeventJSON = http_event_collector("4D14F8D9-D788-4E6E-BF2D-D1A46441242E","localhost")
+     """
 
     # Default batch max size to match splunk's default limits for max byte
     # See http_input stanza in limits.conf; note in testing I had to limit to 100,000 to avoid http event collector breaking connection
     # Auto flush will occur if next event payload will exceed limit
     maxByteLength = 100000
     threadCount = 10
+
+    # An improved requests retry method from
+    # https://www.peterbe.com/plog/best-practice-with-retries-with-requests
+
+    def requests_retry_session(retries=3,backoff_factor=0.3,status_forcelist=(500,502,504),session=None):
+        session = session or requests.Session()
+        retry = Retry(total=retries, read=retries, connect=retries, backoff_factor=backoff_factor, status_forcelist=status_forcelist)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter)
+        return session
 
     def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True):
         self.token = token
@@ -88,7 +108,7 @@ class http_event_collector:
             print (self.input_type)               
 
     def sendEvent(self,payload,eventtime=""):
-        # Method to immediately send an event to the http event collector
+        """Method to immediately send an event to the http event collector"""
 
         headers = {'Authorization':'Splunk '+self.token}
 
@@ -120,7 +140,9 @@ class http_event_collector:
         self.waitUntilDone()
 
     def batchEvent(self,payload,eventtime=""):
-        # Method to store the event in a batch to flush later
+        """
+            Recommended Method to place the event on the batch queue. Queue will auto flush as needed.
+        """
 
         if self.input_type == 'json':
             # Fill in local hostname if not manually populated
@@ -155,7 +177,7 @@ class http_event_collector:
         self.currentByteLength += payloadLength
 
     def batchThread(self):
-        # Threads to send batches of events.
+        """Internal Function: Threads to send batches of events."""
         
         while True:
             if self.debug:
@@ -164,7 +186,7 @@ class http_event_collector:
             headers = {'Authorization':'Splunk '+self.token}
             # try to post payload twice then give up and move on
             try:
-                r = requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
+                r = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
             except Exception as e:
                 pass
 
@@ -176,12 +198,16 @@ class http_event_collector:
             self.flushQueue.task_done()
             
     def waitUntilDone(self):
-        # Block until all flushQueue is empty.
+        """Internal Function: Block until all flushQueue is empty."""
         self.flushQueue.join()
         return
 
 
     def flushBatch(self):
+        """Method called to force flushing of remaining batch events.
+           Always call this method before exiting your code to send any partial batch queue.
+        """
+
         if self.debug:
             print ("Manual Flush: Sticking the batch on the queue.")
         self.flushQueue.put(self.batchEvents)
@@ -209,7 +235,7 @@ def main():
 
     # Start event payload and add the metadata information
     payload = {}
-    payload.update({"index":"main"})
+    payload.update({"index":"test"})
     payload.update({"sourcetype":"txt"})
     payload.update({"source":"test"})
     payload.update({"host":"mysterymachine"})
