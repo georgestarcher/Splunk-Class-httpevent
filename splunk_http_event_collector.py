@@ -76,7 +76,7 @@ class http_event_collector:
         self.popNullFields = False 
         self.flushQueue = Queue.Queue(0)
         for x in range(self.threadCount):
-            t = threading.Thread(target=self.batchThread)
+            t = threading.Thread(target=self._batchThread)
             t.daemon = True
             t.start()
         
@@ -140,7 +140,7 @@ class http_event_collector:
         if self.debug:
             print ("Single Submit: Sticking the event on the queue.")
             print (event)
-        self.waitUntilDone()
+        self._waitUntilDone()
 
     def batchEvent(self,payload,eventtime=""):
         """
@@ -179,7 +179,7 @@ class http_event_collector:
         self.batchEvents.append(payloadString)
         self.currentByteLength += payloadLength
 
-    def batchThread(self):
+    def _batchThread(self):
         """Internal Function: Threads to send batches of events."""
         
         while True:
@@ -200,7 +200,7 @@ class http_event_collector:
                     pass
             self.flushQueue.task_done()
             
-    def waitUntilDone(self):
+    def _waitUntilDone(self):
         """Internal Function: Block until all flushQueue is empty."""
         self.flushQueue.join()
         return
@@ -216,7 +216,7 @@ class http_event_collector:
         self.flushQueue.put(self.batchEvents)
         self.batchEvents = []
         self.currentByteLength = 0
-        self.waitUntilDone()
+        self._waitUntilDone()
 
 def main():
 
