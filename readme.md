@@ -28,7 +28,7 @@ This is a python class file for use with other python scripts to send events to 
 You will need to put this with any other code and import the class as needed.
 Instantiate a copy of the http_event_collector object and use to generate and submit payloads as you see in the example main() method.
 
-### Configuration with pip
+### Configuration: With pip
 
     pip install git+git://github.com/georgestarcher/Splunk-Class-httpevent.git
 
@@ -36,6 +36,18 @@ Once installed you can start python then
 
     from splunk_http_event_collector import http_event_collector
     help(http_event_collector)
+
+### RAW HEC Mode:
+
+If you use raw HEC mode and want to force the index/sourcetype set the attributes on the HEC object like this. You can set one or either. This had to be done as setable attributes since for HEC raw the values are put into the URL the data is posted to.
+
+hec_server.raw_index = "test"
+hec_server.raw_sourcetype = "syslog"
+
+### JSON HEC Mode:
+
+Behavior of this mode isunchanged in the class. You still set all HEC metadata in the payload as you see in example.py.
+
     
 # Notes:
 
