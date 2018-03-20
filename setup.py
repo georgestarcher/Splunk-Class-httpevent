@@ -2,6 +2,10 @@
 
 from distutils.core import setup
 
+import sys
+if sys.version_info < (2,7):
+    sys.exit('Sorry, Python < 2.7 is not supported')
+
 def readme():
     with open('readme.md') as f:
         return f.read()
