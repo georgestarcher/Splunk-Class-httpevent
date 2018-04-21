@@ -61,7 +61,7 @@ class http_event_collector:
     # An improved requests retry method from
     # https://www.peterbe.com/plog/best-practice-with-retries-with-requests
 
-    def requests_retry_session(retries=3,backoff_factor=0.3,status_forcelist=(500,502,504),session=None):
+    def requests_retry_session(self, retries=3,backoff_factor=0.3,status_forcelist=(500,502,504),session=None):
         session = session or requests.Session()
         retry = Retry(total=retries, read=retries, connect=retries, backoff_factor=backoff_factor, status_forcelist=status_forcelist)
         adapter = HTTPAdapter(max_retries=retry)
@@ -130,8 +130,6 @@ class http_event_collector:
 
     def sendEvent(self,payload,eventtime=""):
         """Method to immediately send an event to the http event collector"""
-
-        headers = {'Authorization':'Splunk '+self.token}
 
         if self.input_type == 'json':
             # If eventtime in epoch not passed as optional argument and not in payload, use current system time in epoch
@@ -208,7 +206,7 @@ class http_event_collector:
             # try to post payload twice then give up and move on
             try:
                 r = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
-            except Exception as e:
+            except Exception:
                 pass
 
             if self.debug:
@@ -242,8 +240,10 @@ def main():
 
     # Create event collector object, default SSL and HTTP Event Collector Port
     http_event_collector_key_json = "PUTCOLLECTORKEYHERE"
+    http_event_collector_key_json = "4D14F8D9-D788-4E6E-BF2D-D1A46441242E"
     http_event_collector_key_raw = "PUTCOLLECTORKEYHERE"
     http_event_collector_host = "HOSTNAMEOFTHECOLLECTOR"
+    http_event_collector_host = "localhost"
 
     # Example with the JSON connection set to debug
     testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host,'json')
