@@ -60,8 +60,10 @@ class http_event_collector:
 
     # An improved requests retry method from
     # https://www.peterbe.com/plog/best-practice-with-retries-with-requests
+    # 503 added for endpoint busy
+    # 408 added in case using HAproxy
 
-    def requests_retry_session(self, retries=3,backoff_factor=0.3,status_forcelist=(500,502,504),session=None):
+    def requests_retry_session(self, retries=3,backoff_factor=0.3,status_forcelist=(408,500,502,503,504),session=None):
         session = session or requests.Session()
         retry = Retry(total=retries, read=retries, connect=retries, backoff_factor=backoff_factor, status_forcelist=status_forcelist)
         adapter = HTTPAdapter(max_retries=retry)
