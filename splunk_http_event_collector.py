@@ -136,7 +136,7 @@ class http_event_collector:
         if self.input_type == 'json':
             # If eventtime in epoch not passed as optional argument and not in payload, use current system time in epoch
             if not eventtime and 'time' not in payload:
-                eventtime = str(int(time.time()))
+                eventtime = str(round(time.time(),3))
                 payload.update({'time':eventtime})
 
             # Fill in local hostname if not manually populated
@@ -172,7 +172,7 @@ class http_event_collector:
 
             # If eventtime in epoch not passed as optional argument and not in payload, use current system time in epoch
             if not eventtime and 'time' not in payload:
-                eventtime = str(int(time.time()))
+                eventtime = str(round(time.time(),3)) 
                 payload.update({"time":eventtime})
             if self.popNullFields:
                 payloadEvent = payload.get('event')
