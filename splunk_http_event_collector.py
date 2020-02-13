@@ -208,8 +208,9 @@ class http_event_collector:
             # try to post payload twice then give up and move on
             try:
                 r = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
-            except Exception:
-                pass
+            except Exception as e:
+                if self.debug:
+                    print("Exception during post:", e)
 
             if self.debug:
                 try:
