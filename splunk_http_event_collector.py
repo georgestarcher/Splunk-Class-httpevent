@@ -34,7 +34,7 @@ class http_event_collector:
             http_event_server -- the Splunk Server name or ip. Name must be network resolvable. - required
             input_type -- json or raw HEC type - provided at init (default json)
             host -- value to use as host field for events sent to Splunk (default the local system's hostname) 
-            http_event_port -- Splunk HEC network port (default 8080)
+            http_event_port -- Splunk HEC network port (default 8088)
             http_event_server_ssl -- boolean to set if Splunk HEC is using SSL (default True) 
 
         Attributes:
