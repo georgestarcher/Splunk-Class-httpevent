@@ -1,6 +1,6 @@
 # Python Class for Sending Events to Splunk HTTP Event Collector
 
-Version/Date: 1.5 2018-03-16
+Version/Date: 1.6 2020-02-29
 
 Author: George Starcher (starcher)
 Email: george@georgestarcher.com
@@ -44,6 +44,9 @@ Once installed you can start python then
 
 This works for either RAW or JSON. JSON has the option of the normal existing behavior to override per event by placing in the payload as shown in example.py
 
+### Logging
+
+Logging has been improved to use a proper logger. Note that declaring the basicConfig is the job of your calling code. See main on the class py file for example. Because it is just using a logger you can call the setLevel function on it to the level you wish.
     
 # Notes:
 
