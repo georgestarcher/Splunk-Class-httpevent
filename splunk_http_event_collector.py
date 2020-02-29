@@ -18,6 +18,8 @@ import threading
 import uuid
 import sys
 
+import logging
+
 is_py2 = sys.version[0] == '2'
 if is_py2:
     import Queue as Queue
@@ -72,8 +74,11 @@ class http_event_collector:
         return session
 
     def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True):
+
+        self.log = logging.getLogger(u'HEC')
+        self.log.setLevel(logging.INFO)
+
         self.token = token
-        self.debug = False
         self.SSL_verify = False
         self.http_event_server = http_event_server
         self.http_event_server_ssl = http_event_server_ssl
@@ -98,11 +103,6 @@ class http_event_collector:
             self.host = host
         else:
             self.host = socket.gethostname()
-
-        if self.debug:
-            print (self.token)
-            print (self.server_uri)
-            print (self.input_type)               
 
     @property
     def server_uri(self):
@@ -155,9 +155,8 @@ class http_event_collector:
             event.append(str(payload))
 
         self.flushQueue.put(event)
-        if self.debug:
-            print ("Single Submit: Sticking the event on the queue.")
-            print (event)
+        self.log.debug("Single Submit: Sticking the event on the queue.")
+        self.log.debug("event:%s",event)
         self._waitUntilDone()
 
     def batchEvent(self,payload,eventtime=""):
@@ -188,8 +187,7 @@ class http_event_collector:
         payloadLength = len(payloadString)
 
         if ((self.currentByteLength+payloadLength) > self.maxByteLength or (self.maxByteLength - self.currentByteLength) < payloadLength):
-            if self.debug:
-                print ("Auto Flush: Sticking the batch on the queue.")
+            self.log.debug("Auto Flush: Sticking the batch on the queue.")
             self.flushQueue.put(self.batchEvents)
             self.batchEvents = []
             self.currentByteLength = 0
@@ -201,21 +199,16 @@ class http_event_collector:
         """Internal Function: Threads to send batches of events."""
         
         while True:
-            if self.debug:
-                print ("Events received on thread. Sending to Splunk.")
+            self.log.debug("Events received on thread. Sending to Splunk.")
             payload = " ".join(self.flushQueue.get())
             headers = {'Authorization':'Splunk '+self.token}
             # try to post payload twice then give up and move on
             try:
                 r = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
-            except Exception:
-                pass
+                self.log.debug(r.text())
+            except Exception as e:
+                self.log.exception(e)
 
-            if self.debug:
-                try:
-                    print (r.text)
-                except:
-                    pass
             self.flushQueue.task_done()
             
     def _waitUntilDone(self):
@@ -229,14 +222,16 @@ class http_event_collector:
            Always call this method before exiting your code to send any partial batch queue.
         """
 
-        if self.debug:
-            print ("Manual Flush: Sticking the batch on the queue.")
+        self.log.debug("Manual Flush: Sticking the batch on the queue.")
         self.flushQueue.put(self.batchEvents)
         self.batchEvents = []
         self.currentByteLength = 0
         self._waitUntilDone()
 
 def main():
+
+    # init logging config, this would be job of your main code using this class.
+    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S %z')
 
     # This main method is a test and example section. Normal use you would import this class into your code you wish to send
 
@@ -245,12 +240,10 @@ def main():
     http_event_collector_key_raw = "PUTCOLLECTORKEYHERE"
     http_event_collector_host = "HOSTNAMEOFTHECOLLECTOR"
 
-    # Example with the JSON connection set to debug
+    # Example with the JSON connection logging to debug
     testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host,'json')
-    testeventJSON.debug = True 
-
-    testeventRAW = http_event_collector(http_event_collector_key_raw, http_event_collector_host,'raw')
-
+    testeventJSON.log.setLevel(logging.DEBUG)
+  
     # Set option to pop empty fields to True, default is False to preserve previous class behavior. Only applies to JSON method
     testeventJSON.popNullFields = True 
 
@@ -265,14 +258,38 @@ def main():
     for i in range(5):
         payload.update({"event":{"action":"success","type":"json","message":"individual hello world","testBool":False,"event_id":i}})
         testeventJSON.sendEvent(payload)
-        testeventRAW.sendEvent("%s type=raw message=individual" % time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()))
 
     # Batch add 50000 test events
     for i in range(50000):
         payload.update({"event":{"action":"success","type":"json","message":"batch hello world","testBool":"","event_id":i}})
         testeventJSON.batchEvent(payload)
-        testeventRAW.batchEvent("%s type=raw message=batch event_id=%s" % (time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()), str(i)))
     testeventJSON.flushBatch()
+
+    # Example with the JSON connection logging default to INFO
+
+    testeventRAW = http_event_collector(http_event_collector_key_raw, http_event_collector_host,'raw')
+
+    # Set option to pop empty fields to True, default is False to preserve previous class behavior. Only applies to JSON method
+    testeventJSON.popNullFields = True
+
+    # Start event payload and add the metadata information
+    payload = {}
+    payload.update({"index":"test"})
+    payload.update({"sourcetype":"txt"})
+    payload.update({"source":"test"})
+    payload.update({"host":"mysterymachine"})
+
+    # Add 5 test events
+    for i in range(5):
+        payload.update({"event":{"action":"success","type":"json","message":"individual hello world","testBool":False,"event_id":i}})
+        testeventRAW.sendEvent("%s type=raw message=individual" % time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()))
+
+    sys.exit(0)
+
+    # Batch add 50000 test events
+    for i in range(50000):
+        payload.update({"event":{"action":"success","type":"json","message":"batch hello world","testBool":"","event_id":i}})
+        testeventRAW.batchEvent("%s type=raw message=batch event_id=%s" % (time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()), str(i)))
     testeventRAW.flushBatch()
 
     exit()
