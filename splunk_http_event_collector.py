@@ -19,7 +19,6 @@ import uuid
 import sys
 
 import logging
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S %z')
 
 is_py2 = sys.version[0] == '2'
 if is_py2:
@@ -230,6 +229,9 @@ class http_event_collector:
         self._waitUntilDone()
 
 def main():
+
+    # init logging config, this would be job of your main code using this class.
+    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S %z')
 
     # This main method is a test and example section. Normal use you would import this class into your code you wish to send
 
