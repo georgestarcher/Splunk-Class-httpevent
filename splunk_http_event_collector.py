@@ -102,6 +102,8 @@ class http_event_collector:
             self.host = host
         else:
             self.host = socket.gethostname()
+     
+        self.log.info("HEC Instance Ready: server_uri=%s",self.server_uri)
 
     @property
     def server_uri(self):
@@ -282,8 +284,6 @@ def main():
     for i in range(5):
         payload.update({"event":{"action":"success","type":"json","message":"individual hello world","testBool":False,"event_id":i}})
         testeventRAW.sendEvent("%s type=raw message=individual" % time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()))
-
-    sys.exit(0)
 
     # Batch add 50000 test events
     for i in range(50000):
