@@ -1,6 +1,7 @@
 from splunk_http_event_collector import http_event_collector 
 import random
 import json
+import logging
 
 def commitCrime():
 
@@ -11,12 +12,19 @@ def commitCrime():
 
     return {"killer":random.choice(suspects), "weapon":random.choice(weapons), "location":random.choice(rooms), "victim":"Mr Boddy"}
 
+# init logging config, this would be job of your main code using this class.
+logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(message)s', datefmt='%Y-%m-%d %H:%M:%S %z')
+
+
 # Create event collector object, default SSL and HTTP Event Collector Port
 http_event_collector_key = "4D14F8D9-D788-4E6E-BF2D-D1A46441242E"
 http_event_collector_host = "localhost"
 
 testevent = http_event_collector(http_event_collector_key, http_event_collector_host)
+# Set to pop null fields.  Always a good idea
 testevent.popNullFields = True
+# set logging to DEBUG for example
+testevent.log.setLevel(logging.DEBUG)
 
 # Start event payload and add the metadata information
 payload = {}
