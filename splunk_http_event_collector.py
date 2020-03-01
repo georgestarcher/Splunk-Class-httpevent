@@ -40,7 +40,6 @@ class http_event_collector:
             http_event_server_ssl -- boolean to set if Splunk HEC is using SSL (default True) 
 
         Attributes:
-            debug -- debug boolean flag (default false) 
             SSL_verify -- boolean flag to force SSL certificate verification (default false)
             popNullFields -- boolean flag to pop null fields off payload prior to sending to Splunk (default false)
             index -- optional index name for HEC events (default None)
