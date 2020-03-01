@@ -2,6 +2,7 @@ from splunk_http_event_collector import http_event_collector
 import random
 import json
 import logging
+import sys
 
 def commitCrime():
 
@@ -21,6 +22,12 @@ http_event_collector_key = "4D14F8D9-D788-4E6E-BF2D-D1A46441242E"
 http_event_collector_host = "localhost"
 
 testevent = http_event_collector(http_event_collector_key, http_event_collector_host)
+
+# perform a HEC reachable check
+hec_reachable = testevent.check_connectivity()
+if not hec_reachable:
+    sys.exit(1)
+
 # Set to pop null fields.  Always a good idea
 testevent.popNullFields = True
 # set logging to DEBUG for example

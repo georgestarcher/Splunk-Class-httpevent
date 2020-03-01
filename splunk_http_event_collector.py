@@ -130,6 +130,48 @@ class http_event_collector:
         server_uri = '%s://%s:%s/services/collector%s' % (protocol, self.http_event_server, self.http_event_port, input_url)
         return (server_uri)
 
+    def check_connectivity(self):
+        """
+        method to check connectivity to Splunk HEC
+
+        Reference:
+            https://docs.splunk.com/Documentation/Splunk/8.0.2/Data/TroubleshootHTTPEventCollector
+
+        Notes:
+            method will return true even if HEC token is wrong because system is reachable. 
+            method will log warning on reachable errors to show bad token
+            method will warn on splunk hec server health codes
+        """
+
+        self.log.info("Checking HEC Server URI reachability.")
+        headers = {'Authorization':'Splunk '+self.token}
+        payload = dict()
+        response = dict() 
+        hec_reachable = False
+        acceptable_status_codes = [400,401,403]
+        heath_warning_status_codes = [500,503]
+        try:
+            response = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
+            if response:
+                self.log.info("Splunk Server URI is reachable.")
+                hec_reachable = True
+            else:
+                if response.status_code in acceptable_status_codes:
+                    self.log.info("Splunk Server URI is reachable.")
+                    self.log.warn("Connectivity Check: http_status_code=%s http_message=%s",response.status_code,response.text)
+                    hec_reachable = True
+                elif response.status_code in heath_warning_status_codes:
+                    self.log.warn("Splunk HEC Server has potential health issues")
+                    self.log.error("Connectivity Check: http_status_code=%s http_message=%s",response.status_code,response.text)
+                else:
+                    self.log.warn("Splunk Server URI is unreachable.")
+                    self.log.error("HTTP status_code=%s message=%s",response.status_code,response.text)
+        except Exception as e:
+            self.log.warn("Splunk Server URI is unreachable.")
+            self.log.exception(e)
+
+        return (hec_reachable)
+
 
     def sendEvent(self,payload,eventtime=""):
         """Method to immediately send an event to the http event collector"""
@@ -205,8 +247,8 @@ class http_event_collector:
             headers = {'Authorization':'Splunk '+self.token}
             # try to post payload twice then give up and move on
             try:
-                r = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
-                self.log.debug(r.text())
+                response = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
+                self.log.debug("batch_thread: http_status_code=%s http_message=%s",response.status_code,response.text)
             except Exception as e:
                 self.log.exception(e)
 
