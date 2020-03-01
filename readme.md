@@ -1,6 +1,6 @@
 # Python Class for Sending Events to Splunk HTTP Event Collector
 
-Version/Date: 1.6 2020-02-29
+Version/Date: 1.7 2020-03-01
 
 Author: George Starcher (starcher)
 Email: george@georgestarcher.com
@@ -55,3 +55,5 @@ Logging has been improved to use a proper logger. Note that declaring the basicC
 * You must call flushBatch() if using batchEvent() or you risk exiting your code before all threads have flushed their data to Splunk.
 * There is now an optional input_type when declaring your HEC server. It defaults to the normal JSON event format but adds raw support.
 * Added a pop null fields option. Defaults to False to preserve existing class behavior. 
+* Added a check_connectivity method that is optional. See example.py for use and docstrings on the method for details.
+
