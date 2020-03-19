@@ -1,6 +1,6 @@
 # Python Class for Sending Events to Splunk HTTP Event Collector
 
-Version/Date: 1.7 2020-03-01
+Version/Date: 1.8 2020-03-19
 
 Author: George Starcher (starcher)
 Email: george@georgestarcher.com
