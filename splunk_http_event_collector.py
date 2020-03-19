@@ -193,7 +193,7 @@ class http_event_collector:
                 payloadEvent = payload.get('event')
                 payloadEvent = {k:payloadEvent.get(k) for k,v in payloadEvent.items() if v}
                 payload.update({"event":payloadEvent})
-            event.append(json.dumps(payload))
+            event.append(json.dumps(payload, default=str))
         else:
             event.append(str(payload))
 
@@ -220,7 +220,7 @@ class http_event_collector:
                 payloadEvent = payload.get('event')
                 payloadEvent = {k:payloadEvent.get(k) for k,v in payloadEvent.items() if v}
                 payload.update({"event":payloadEvent})
-            payloadString = json.dumps(payload)
+            payloadString = json.dumps(payload, default=str)
 
         else:
             payloadString = str(payload)
