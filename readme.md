@@ -32,6 +32,10 @@ Instantiate a copy of the http_event_collector object and use to generate and su
 
     pip install git+git://github.com/georgestarcher/Splunk-Class-httpevent.git
 
+OR
+
+    pip3 install git+git://github.com/georgestarcher/Splunk-Class-httpevent.git
+
 Once installed you can start python then
 
     from splunk_http_event_collector import http_event_collector
