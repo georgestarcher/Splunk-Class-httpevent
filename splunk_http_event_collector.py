@@ -26,6 +26,44 @@ if is_py2:
 else:
     import queue as Queue
 
+class SplunkHECException(Exception):
+    pass
+
+class SplunkNotReachable(SplunkHECException):
+    pass
+
+class SplunkTransmissionError(SplunkHECException):
+    def __init__(self, events=Queue.Queue(0)):
+        super().__init__()
+        self._events = []
+        while not events.empty():
+            self._events.append(events.get())
+    
+    @property
+    def events(self):
+        return self._events
+    
+    @property
+    def error_set(self):
+        return { evt.error for evt in self._events }
+    
+    @property
+    def event_set(self):
+        return { evt.event for evt in self._events }
+
+class NotReceivedEvent:
+    def __init__(self, event, error):
+        self._event = event
+        self._error = error
+    
+    @property
+    def event(self):
+        return self._event
+
+    @property
+    def error(self):
+        return self._error
+
 class http_event_collector:
 
     """
@@ -72,7 +110,7 @@ class http_event_collector:
         session.mount('https://', adapter)
         return session
 
-    def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True):
+    def __init__(self,token,http_event_server,input_type='json',host="",http_event_port='8088',http_event_server_ssl=True, raise_exception=False):
 
         self.log = logging.getLogger(u'HEC')
         self.log.setLevel(logging.INFO)
@@ -82,6 +120,7 @@ class http_event_collector:
         self.http_event_server = http_event_server
         self.http_event_server_ssl = http_event_server_ssl
         self.http_event_port = http_event_port
+        self.raise_exception = raise_exception
         self.index = ""
         self.sourcetype = ""
         self.batchEvents = []
@@ -89,6 +128,7 @@ class http_event_collector:
         self.input_type = input_type
         self.popNullFields = False 
         self.flushQueue = Queue.Queue(0)
+        self.errorList = Queue.Queue(0)
         for x in range(self.threadCount):
             t = threading.Thread(target=self._batchThread)
             t.daemon = True
@@ -169,7 +209,10 @@ class http_event_collector:
         except Exception as e:
             self.log.warn("Splunk Server URI is unreachable.")
             self.log.exception(e)
-
+        
+        if self.raise_exception:
+            raise SplunkNotReachable(e)
+        
         return (hec_reachable)
 
 
@@ -200,7 +243,7 @@ class http_event_collector:
         self.flushQueue.put(event)
         self.log.debug("Single Submit: Sticking the event on the queue.")
         self.log.debug("event:%s",event)
-        self._waitUntilDone()
+        return self._waitUntilDone()
 
     def batchEvent(self,payload,eventtime=""):
         """
@@ -243,21 +286,32 @@ class http_event_collector:
         
         while True:
             self.log.debug("Events received on thread. Sending to Splunk.")
-            payload = " ".join(self.flushQueue.get())
+            events = self.flushQueue.get()
+            payload = " ".join(events)
             headers = {'Authorization':'Splunk '+self.token}
             # try to post payload twice then give up and move on
             try:
                 response = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
+                if response.status_code != 200:
+                    for event in events:
+                        self.errorList.put(NotReceivedEvent(event=event, error=response.text))
                 self.log.debug("batch_thread: http_status_code=%s http_message=%s",response.status_code,response.text)
             except Exception as e:
                 self.log.exception(e)
+                self.errorList.put(NotReceivedEvent(event=payload, error=str(e)))
 
             self.flushQueue.task_done()
             
     def _waitUntilDone(self):
         """Internal Function: Block until all flushQueue is empty."""
         self.flushQueue.join()
-        return
+        if not self.errorList.empty():
+            expt = SplunkTransmissionError(self.errorList)
+            if self.raise_exception:
+                raise expt
+            return False, expt
+        self.errorList = Queue.Queue(0)
+        return True, SplunkTransmissionError()
 
 
     def flushBatch(self):
@@ -269,7 +323,7 @@ class http_event_collector:
         self.flushQueue.put(self.batchEvents)
         self.batchEvents = []
         self.currentByteLength = 0
-        self._waitUntilDone()
+        return self._waitUntilDone()
 
 def main():
 
@@ -282,7 +336,7 @@ def main():
     http_event_collector_key_json = "PUTCOLLECTORKEYHERE"
     http_event_collector_key_raw = "PUTCOLLECTORKEYHERE"
     http_event_collector_host = "HOSTNAMEOFTHECOLLECTOR"
-
+    
     # Example with the JSON connection logging to debug
     testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host,'json')
     testeventJSON.log.setLevel(logging.DEBUG)
@@ -300,13 +354,13 @@ def main():
     # Add 5 test events
     for i in range(5):
         payload.update({"event":{"action":"success","type":"json","message":"individual hello world","testBool":False,"event_id":i}})
-        testeventJSON.sendEvent(payload)
+        ret, errors = testeventJSON.sendEvent(payload)
 
     # Batch add 50000 test events
     for i in range(50000):
         payload.update({"event":{"action":"success","type":"json","message":"batch hello world","testBool":"","event_id":i}})
         testeventJSON.batchEvent(payload)
-    testeventJSON.flushBatch()
+    ret, errors = testeventJSON.flushBatch()
 
     # Example with the JSON connection logging default to INFO
 
@@ -325,13 +379,47 @@ def main():
     # Add 5 test events
     for i in range(5):
         payload.update({"event":{"action":"success","type":"json","message":"individual hello world","testBool":False,"event_id":i}})
-        testeventRAW.sendEvent("%s type=raw message=individual" % time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()))
+        ret, error = testeventRAW.sendEvent("%s type=raw message=individual" % time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()))
 
     # Batch add 50000 test events
     for i in range(50000):
         payload.update({"event":{"action":"success","type":"json","message":"batch hello world","testBool":"","event_id":i}})
         testeventRAW.batchEvent("%s type=raw message=batch event_id=%s" % (time.strftime("%Y-%m-%d %H:%M:%S GMT", time.gmtime()), str(i)))
-    testeventRAW.flushBatch()
+    ret, error = testeventRAW.flushBatch()
+
+    # Example with the JSON connection and raise exception
+    testeventJSON = http_event_collector(http_event_collector_key_json, http_event_collector_host,'json', raise_exception=True)
+  
+    # Set option to pop empty fields to True, default is False to preserve previous class behavior. Only applies to JSON method
+    testeventJSON.popNullFields = True 
+
+    # Start event payload and add the metadata information
+    payload = {}
+    payload.update({"index":"test"})
+    payload.update({"sourcetype":"txt"})
+    payload.update({"source":"test"})
+    payload.update({"host":"mysterymachine"})
+
+    # Add 5 test events
+    for i in range(5):
+        payload.update({"event":{"action":"success","type":"json","message":"individual hello world","testBool":False,"event_id":i}})
+        try:
+            _, _ = testeventJSON.sendEvent(payload)
+        except SplunkTransmissionError as err:
+            # In case of error the Exception contains all data needed for handle fallback
+            print(err.error_set.pop())
+            print(err.event_set.pop())        
+
+    # Batch add 50000 test events
+    for i in range(50000):
+        payload.update({"event":{"action":"success","type":"json","message":"batch hello world","testBool":"","event_id":i}})
+        testeventJSON.batchEvent(payload)
+    try:
+        _, _ = testeventJSON.flushBatch()
+    except SplunkTransmissionError as err:
+        # In case of error the Exception contains all data needed for handle fallback
+        print(err.error_set.pop())
+        print(err.event_set.pop())        
 
     exit()
 
