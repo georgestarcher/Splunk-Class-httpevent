@@ -148,7 +148,8 @@ class http_event_collector:
         payload = dict()
         response = dict() 
         hec_reachable = False
-        acceptable_status_codes = [400,401,403]
+        acceptable_status_codes = [400]
+        bad_token_codes = [401,403]
         heath_warning_status_codes = [500,503]
         try:
             response = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
@@ -160,6 +161,9 @@ class http_event_collector:
                     self.log.info("Splunk Server URI is reachable.")
                     self.log.warn("Connectivity Check: http_status_code=%s http_message=%s",response.status_code,response.text)
                     hec_reachable = True
+                elif response.status_code in bad_token_codes:
+                    self.log.warn("Splunk HEC Server token is invalid or disabled")
+                    self.log.error("Connectivity Check: http_status_code=%s http_message=%s",response.status_code,response.text)
                 elif response.status_code in heath_warning_status_codes:
                     self.log.warn("Splunk HEC Server has potential health issues")
                     self.log.error("Connectivity Check: http_status_code=%s http_message=%s",response.status_code,response.text)
