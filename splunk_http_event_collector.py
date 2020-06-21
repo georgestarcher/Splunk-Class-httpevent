@@ -138,18 +138,22 @@ class http_event_collector:
             https://docs.splunk.com/Documentation/Splunk/8.0.2/Data/TroubleshootHTTPEventCollector
 
         Notes:
-            method will return true even if HEC token is wrong because system is reachable. 
-            method will log warning on reachable errors to show bad token
-            method will warn on splunk hec server health codes
+            method will return false if HEC token is incorrect (http status code 401 or 403). 
+            method will return false & log warning on all failures
+            method will return status message in all instances to provide failure reason
         """
 
         self.log.info("Checking HEC Server URI reachability.")
+        
         headers = {'Authorization':'Splunk '+self.token}
         payload = dict()
         response = dict() 
+        hec_status_msg = "Splunk Server URI is unreachable."
         hec_reachable = False
-        acceptable_status_codes = [400,401,403]
+        acceptable_status_codes = [400]
+        bad_token_codes = [401,403]
         heath_warning_status_codes = [500,503]
+
         try:
             response = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
             if response:
@@ -157,20 +161,28 @@ class http_event_collector:
                 hec_reachable = True
             else:
                 if response.status_code in acceptable_status_codes:
-                    self.log.info("Splunk Server URI is reachable.")
+                    hec_status_msg = "Splunk Server URI is reachable."
+                    self.log.info(hec_status_msg)
                     self.log.warn("Connectivity Check: http_status_code=%s http_message=%s",response.status_code,response.text)
                     hec_reachable = True
+                    hec_status_msg = "Connectivity OK"
+                elif response.status_code in bad_token_codes:
+                    hec_status_msg = "Splunk HEC Server token is invalid or disabled"
+                    self.log.warn(hec_status_msg)
+                    self.log.error("Connectivity Check: http_status_code=%s http_message=%s",response.status_code,response.text)
                 elif response.status_code in heath_warning_status_codes:
-                    self.log.warn("Splunk HEC Server has potential health issues")
+                    hec_status_msg = "Splunk HEC Server has potential health issues"
+                    self.log.warn(hec_status_msg)
                     self.log.error("Connectivity Check: http_status_code=%s http_message=%s",response.status_code,response.text)
                 else:
-                    self.log.warn("Splunk Server URI is unreachable.")
+                    hec_status_msg = "Splunk Server URI is unreachable."
+                    self.log.warn(hec_status_msg)
                     self.log.error("HTTP status_code=%s message=%s",response.status_code,response.text)
         except Exception as e:
-            self.log.warn("Splunk Server URI is unreachable.")
+            self.log.warn(hec_status_msg)
             self.log.exception(e)
 
-        return (hec_reachable)
+        return (hec_reachable, hec_status_msg)
 
 
     def sendEvent(self,payload,eventtime=""):
