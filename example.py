@@ -24,8 +24,9 @@ http_event_collector_host = "localhost"
 testevent = http_event_collector(http_event_collector_key, http_event_collector_host)
 
 # perform a HEC reachable check
-hec_reachable = testevent.check_connectivity()
+hec_reachable, hec_conn_msg = testevent.check_connectivity()
 if not hec_reachable:
+    print(hec_conn_msg)
     sys.exit(1)
 
 # Set to pop null fields.  Always a good idea
