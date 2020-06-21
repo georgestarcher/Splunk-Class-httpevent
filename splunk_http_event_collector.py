@@ -138,9 +138,9 @@ class http_event_collector:
             https://docs.splunk.com/Documentation/Splunk/8.0.2/Data/TroubleshootHTTPEventCollector
 
         Notes:
-            method will return true even if HEC token is wrong because system is reachable. 
-            method will log warning on reachable errors to show bad token
-            method will warn on splunk hec server health codes
+            method will return false if HEC token is incorrect (http status code 401 or 403). 
+            method will return false & log warning on all failures
+            method will return status message in all instances to provide failure reason
         """
 
         self.log.info("Checking HEC Server URI reachability.")
@@ -165,6 +165,7 @@ class http_event_collector:
                     self.log.info(hec_status_msg)
                     self.log.warn("Connectivity Check: http_status_code=%s http_message=%s",response.status_code,response.text)
                     hec_reachable = True
+                    hec_status_msg = "Connectivity OK"
                 elif response.status_code in bad_token_codes:
                     hec_status_msg = "Splunk HEC Server token is invalid or disabled"
                     self.log.warn(hec_status_msg)
