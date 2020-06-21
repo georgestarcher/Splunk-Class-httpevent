@@ -26,7 +26,7 @@ testevent = http_event_collector(http_event_collector_key, http_event_collector_
 # perform a HEC reachable check
 hec_reachable, hec_conn_msg = testevent.check_connectivity()
 if not hec_reachable:
-    print("Connection issue: {} (exiting)".format(hec_conn_msg)
+    print("Connection issue: {} (exiting)".format(hec_conn_msg))
     sys.exit(1)
 
 # Set to pop null fields.  Always a good idea
