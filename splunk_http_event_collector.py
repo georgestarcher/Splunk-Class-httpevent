@@ -180,6 +180,7 @@ class http_event_collector:
             # If eventtime in epoch not passed as optional argument and not in payload, use current system time in epoch
             if not eventtime and 'time' not in payload:
                 eventtime = str(round(time.time(),3))
+            if eventtime and 'time' not in payload:
                 payload.update({'time':eventtime})
 
             # Fill in local hostname if not manually populated
@@ -214,8 +215,9 @@ class http_event_collector:
 
             # If eventtime in epoch not passed as optional argument and not in payload, use current system time in epoch
             if not eventtime and 'time' not in payload:
-                eventtime = str(round(time.time(),3)) 
-                payload.update({"time":eventtime})
+                eventtime = str(round(time.time(),3))
+            if eventtime and 'time' not in payload:
+                payload.update({'time':eventtime})
             if self.popNullFields:
                 payloadEvent = payload.get('event')
                 payloadEvent = {k:payloadEvent.get(k) for k,v in payloadEvent.items() if v}

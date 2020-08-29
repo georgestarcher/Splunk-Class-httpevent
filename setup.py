@@ -12,7 +12,7 @@ def readme():
 
 setup(name='Splunk-HEC',
       python_requires='>2.7',
-      version='1.8',
+      version='1.81',
       description='This is a python class file for use with other python scripts to send events to a Splunk http event collector.',
       long_description=readme(),
       author='George (starcher) Starcher',
