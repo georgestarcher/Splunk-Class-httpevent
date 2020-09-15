@@ -156,7 +156,10 @@ class http_event_collector:
                 self.log.info("Splunk Server URI is reachable.")
                 hec_reachable = True
             else:
-                if response.status_code in acceptable_status_codes:
+                if response.status_code == 400:
+                    self.log.info("Splunk Server URI is reachable.")
+                    hec_reachable = True
+                elif response.status_code in acceptable_status_codes:
                     self.log.info("Splunk Server URI is reachable.")
                     self.log.warn("Connectivity Check: http_status_code=%s http_message=%s",response.status_code,response.text)
                     hec_reachable = True
