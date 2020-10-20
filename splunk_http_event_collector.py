@@ -57,7 +57,11 @@ class http_event_collector:
     # See http_input stanza in limits.conf; note in testing I had to limit to 100,000 to avoid http event collector breaking connection
     # Auto flush will occur if next event payload will exceed limit
     maxByteLength = 100000
+    # Number of threads used to send events to the HEC endpoint (max concurrency).
+    # If event batching is used, a single thread may send multiple events at a time in a single http request.
     threadCount = 10
+    # Limit the size of the flushQueue, that buffers events for the sending threads.
+    maxQueueSize = 100 * threadCount
 
     # An improved requests retry method from
     # https://www.peterbe.com/plog/best-practice-with-retries-with-requests
@@ -88,7 +92,7 @@ class http_event_collector:
         self.currentByteLength = 0
         self.input_type = input_type
         self.popNullFields = False 
-        self.flushQueue = Queue.Queue(0)
+        self.flushQueue = Queue.Queue(maxsize=self.maxQueueSize)
         for x in range(self.threadCount):
             t = threading.Thread(target=self._batchThread)
             t.daemon = True
@@ -174,7 +178,11 @@ class http_event_collector:
 
 
     def sendEvent(self,payload,eventtime=""):
-        """Method to immediately send an event to the http event collector"""
+        """
+        Method to immediately send an event to the http event collector
+        
+        When the internal queue is exausted, this function _blocks_ until a slot is available.
+        """
 
         if self.input_type == 'json':
             # If eventtime in epoch not passed as optional argument and not in payload, use current system time in epoch
@@ -205,7 +213,9 @@ class http_event_collector:
 
     def batchEvent(self,payload,eventtime=""):
         """
-            Recommended Method to place the event on the batch queue. Queue will auto flush as needed.
+        Recommended Method to place the event on the batch queue. Queue will auto flush as needed.
+
+        When the internal queue is exausted, this function _blocks_ until a slot is available.
         """
 
         if self.input_type == 'json':
