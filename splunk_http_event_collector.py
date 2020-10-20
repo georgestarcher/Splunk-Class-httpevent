@@ -148,7 +148,7 @@ class http_event_collector:
         """
 
         self.log.info("Checking HEC Server URI reachability.")
-        headers = {'Authorization':'Splunk '+self.token}
+        headers = {'Authorization':'Splunk '+self.token, 'X-Splunk-Request-Channel':str(uuid.uuid1())}
         payload = dict()
         response = dict() 
         hec_reachable = False
@@ -256,7 +256,7 @@ class http_event_collector:
         while True:
             self.log.debug("Events received on thread. Sending to Splunk.")
             payload = " ".join(self.flushQueue.get())
-            headers = {'Authorization':'Splunk '+self.token}
+            headers = {'Authorization':'Splunk '+self.token, 'X-Splunk-Request-Channel':str(uuid.uuid1())}
             # try to post payload twice then give up and move on
             try:
                 response = self.requests_retry_session().post(self.server_uri, data=payload, headers=headers, verify=self.SSL_verify)
