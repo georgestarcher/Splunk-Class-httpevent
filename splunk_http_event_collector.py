@@ -176,8 +176,7 @@ class http_event_collector:
 
         return (hec_reachable)
 
-
-    def sendEvent(self,payload,eventtime=""):
+    def sendEvent(self, payload, eventtime="", fields={}):
         """
         Method to immediately send an event to the http event collector
         
@@ -189,7 +188,9 @@ class http_event_collector:
             if not eventtime and 'time' not in payload:
                 eventtime = str(round(time.time(),3))
             if eventtime and 'time' not in payload:
-                payload.update({'time':eventtime})
+                payload.update({'time': eventtime})
+            # add custom fields
+            self.addFields(payload, fields)
 
             # Fill in local hostname if not manually populated
             if 'host' not in payload:
@@ -211,7 +212,7 @@ class http_event_collector:
         self.log.debug("event:%s",event)
         self._waitUntilDone()
 
-    def batchEvent(self,payload,eventtime=""):
+    def batchEvent(self, payload, eventtime="", fields={}):
         """
         Recommended Method to place the event on the batch queue. Queue will auto flush as needed.
 
@@ -227,7 +228,11 @@ class http_event_collector:
             if not eventtime and 'time' not in payload:
                 eventtime = str(round(time.time(),3))
             if eventtime and 'time' not in payload:
-                payload.update({'time':eventtime})
+                payload.update({'time': eventtime})
+
+             # add custom fields
+            self.addFields(payload, fields)
+
             if self.popNullFields:
                 payloadEvent = payload.get('event')
                 payloadEvent = {k:payloadEvent.get(k) for k,v in payloadEvent.items() if v}
@@ -282,6 +287,11 @@ class http_event_collector:
         self.batchEvents = []
         self.currentByteLength = 0
         self._waitUntilDone()
+
+    def addFields(self, payload, fields):
+        if fields and 'fields' not in payload:
+            payload.update({"fields": fields})
+
 
 def main():
 
