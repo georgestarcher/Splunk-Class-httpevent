@@ -93,6 +93,9 @@ class http_event_collector:
         self.input_type = input_type
         self.popNullFields = False 
         self.flushQueue = Queue.Queue(maxsize=self.maxQueueSize)
+        self.errorQueue = Queue.Queue()
+        self.abort = threading.Event()
+        
         for x in range(self.threadCount):
             t = threading.Thread(target=self._batchThread)
             t.daemon = True
@@ -215,7 +218,7 @@ class http_event_collector:
         """
         Recommended Method to place the event on the batch queue. Queue will auto flush as needed.
 
-        When the internal queue is exausted, this function _blocks_ until a slot is available.
+        When the internal queue is exhausted, this function _blocks_ until a slot is available.
         """
 
         if self.input_type == 'json':
@@ -250,10 +253,16 @@ class http_event_collector:
         self.batchEvents.append(payloadString)
         self.currentByteLength += payloadLength
 
+        if not self.abort.is_set():
+            return 0
+        else:
+            self._raiseErrors()
+            return 1
+        
     def _batchThread(self):
         """Internal Function: Threads to send batches of events."""
         
-        while True:
+        while not self.abort.is_set():
             self.log.debug("Events received on thread. Sending to Splunk.")
             payload = " ".join(self.flushQueue.get())
             headers = {'Authorization':'Splunk '+self.token, 'X-Splunk-Request-Channel':str(uuid.uuid1())}
@@ -263,26 +272,61 @@ class http_event_collector:
                 self.log.debug("batch_thread: http_status_code=%s http_message=%s",response.status_code,response.text)
             except Exception as e:
                 self.log.exception(e)
-
-            self.flushQueue.task_done()
+                error_message = e
             
+            if response is not None and response.status_code == 200:
+                self.flushQueue.task_done()
+            else:
+                self.abort.set()
+                # Get the 'text' field from the json response.
+                if response is not None and hasattr(response, 'text'):
+                    try:
+                        error_obj = json.loads(response.text)
+                        error_message = error_obj['text']
+                    except:
+                        error_message = response.text
+                    error = "Received HTTP %d error connecting to HEC service: %s" % (response.status_code, error_message)
+                else:
+                    error = "Error connecting to HEC service: %s" % error_message
+                self.errorQueue.put_nowait(error)
+                
+                # Empty the queue
+                while True:
+                    try:
+                        self.flushQueue.get(block=False)
+                    except Queue.Empty:
+                        pass
+                    self.flushQueue.task_done()
+
     def _waitUntilDone(self):
         """Internal Function: Block until all flushQueue is empty."""
         self.flushQueue.join()
         return
 
-
     def flushBatch(self):
         """Method called to force flushing of remaining batch events.
            Always call this method before exiting your code to send any partial batch queue.
         """
-
         self.log.debug("Manual Flush: Sticking the batch on the queue.")
         self.flushQueue.put(self.batchEvents)
         self.batchEvents = []
         self.currentByteLength = 0
         self._waitUntilDone()
+        
+        if not self.abort.is_set():
+            return 0
+        else:
+            self._raiseErrors()
+            return 1
 
+    def _raiseErrors(self):
+        try:
+            exc = self.errorQueue.get(timeout=5)
+            raise Exception(exc)
+        except Queue.Empty:
+            pass
+        
+    
 def main():
 
     # init logging config, this would be job of your main code using this class.
